@@ -1,0 +1,21 @@
+name: בדיקת זמינות לבקשה חדשה
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  check:
+    if: contains(join(github.event.issue.labels.*.name, ','), 'pending')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const script = require(`${process.env.GITHUB_WORKSPACE}/scripts/check-conflicts.js`);
+            await script({ github, context, core });

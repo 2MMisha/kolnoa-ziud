@@ -1,0 +1,34 @@
+name: עיבוד סטטוס בקשה (אישור / דחייה / החזרה)
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  issues: write
+  contents: write
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    env:
+      # רשימת שמות המשתמשים בגיטהאב שמורשים לאשר/לדחות/לסמן החזרה,
+      # מופרדים בפסיקים. יש לערוך ב-Settings -> Secrets and variables ->
+      # Actions -> Variables -> ADMIN_GITHUB_LOGINS (למשל: "michael-gh-username").
+      ADMIN_GITHUB_LOGINS: ${{ vars.ADMIN_GITHUB_LOGINS }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: process
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const script = require(`${process.env.GITHUB_WORKSPACE}/scripts/process-label.js`);
+            await script({ github, context, core });
+      - name: Commit updated data files
+        if: steps.process.outputs.changed == 'true'
+        run: |
+          git config user.name "kolnoa-ziud-bot"
+          git config user.email "actions@github.com"
+          git add data/bookings.json data/history.json
+          git diff --cached --quiet || git commit -m "עדכון סטטוס בקשה #${{ github.event.issue.number }} (${{ github.event.label.name }})"
+          git push
